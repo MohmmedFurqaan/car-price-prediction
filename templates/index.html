@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Predict car prices using machine learning">
+    <title>Car Price Predictor</title>
+    <link rel="stylesheet" href="../static/css/style.css">
+</head>
+<body>
+    <!-- Animated background -->
+    <div class="bg-animation">
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+    </div>
+
+    <!-- Floating car icons -->
+    <div class="floating-icon">🚗</div>
+    <div class="floating-icon">🚙</div>
+    <div class="floating-icon">🚕</div>
+    <div class="floating-icon">🏎️</div>
+
+    <div class="container">
+        <h1 class="title">Car Price Predictor</h1>
+        
+        <!-- Loading spinner -->
+        <div id="loadingSpinner" class="loading-spinner" style="display: none;">
+            <div class="spinner"></div>
+            <p>Predicting price...</p>
+        </div>
+
+        <!-- Error message -->
+        <div id="errorMessage" class="error-message" style="display: none;"></div>
+        
+        <form id="priceForm" novalidate>
+            <div class="form-group">
+                <label class="label" for="company">Select Company *</label>
+                <div class="select-wrapper">
+                    <select class="select" id="company" name="company" required>
+                        {% for company in companies %}
+                            <option value="{{ company }}">{{ company }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="field-error" id="companyError"></div>
+            </div>
+
+            <div class="form-group">
+                <label class="label" for="car_model">Select Car Model *</label>
+                <div class="select-wrapper">
+                    <select class="select" id="car_model" name="car_model" required disabled>
+                        <option value="">Select Car Model</option>
+                    </select>
+                </div>
+                <div class="field-error" id="carModelError"></div>
+            </div>
+
+            <div class="form-group">
+                <label class="label" for="year">Select Year *</label>
+                <div class="select-wrapper">
+                    <select class="select" id="year" name="year" required>
+                        <option value="">Select Year</option>
+                        {% for year in years %}
+                            <option value="{{ year }}">{{ year }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="field-error" id="yearError"></div>
+            </div>
+
+            <div class="form-group">
+                <label class="label" for="fuel_type">Select Fuel Type *</label>
+                <div class="select-wrapper">
+                    <select class="select" id="fuel_type" name="fuel_type" required>
+                        <option value="">Select Fuel Type</option>
+                        {% for fuel_type in fuel_types %}
+                            <option value="{{ fuel_type }}">{{ fuel_type }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="field-error" id="fuelTypeError"></div>
+            </div>
+
+            <div class="form-group">
+                <label class="label" for="kilometers">Kilometers Driven *</label>
+                <input 
+                    type="number" 
+                    class="input" 
+                    id="kilometers" 
+                    name="kilometers"
+                    placeholder="Enter kilometers driven"
+                    required
+                    min="0"
+                    max="1000000"
+                    step="1000"
+                >
+                <div class="field-error" id="kilometersError"></div>
+            </div>
+
+            <button type="submit" class="predict-btn" id="predictBtn">
+                <span class="btn-text">Predict Price</span>
+            </button>
+        </form>
+
+        <!-- Result display -->
+        <div id="predictionResult" class="result" style="display: none;">
+            <h3 id="predictionText"></h3>
+        </div>
+    </div>
+
+    <script>
+        class CarPricePredictor {
+            constructor() {
+                this.form = document.getElementById('priceForm');
+                this.companySelect = document.getElementById('company');
+                this.carModelSelect = document.getElementById('car_model');
+                this.predictBtn = document.getElementById('predictBtn');
+                this.loadingSpinner = document.getElementById('loadingSpinner');
+                this.errorMessage = document.getElementById('errorMessage');
+                this.predictionResult = document.getElementById('predictionResult');
+                
+                this.initializeEventListeners();
+            }
+
+            initializeEventListeners() {
+                // Company selection change
+                this.companySelect.addEventListener('change', (e) => {
+                    this.loadCarModels(e.target.value);
+                });
+
+                // Form submission
+                this.form.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    this.handleFormSubmission();
+                });
+
+                // Real-time validation
+                this.form.querySelectorAll('input, select').forEach(field => {
+                    field.addEventListener('blur', () => this.validateField(field));
+                    field.addEventListener('input', () => this.clearFieldError(field));
+                });
+            }
+
+            async loadCarModels(company) {
+                if (!company || company === 'Select Company') {
+                    this.carModelSelect.disabled = true;
+                    this.carModelSelect.innerHTML = '<option value="">Select Car Model</option>';
+                    return;
+                }
+
+                try {
+                    this.carModelSelect.disabled = true;
+                    this.carModelSelect.innerHTML = '<option value="">Loading...</option>';
+
+                    const response = await fetch(`/api/car-models/${encodeURIComponent(company)}`);
+                    
+                    if (!response.ok) {
+                        throw new Error('Failed to load car models');
+                    }
+
+                    const data = await response.json();
+                    
+                    this.carModelSelect.innerHTML = '<option value="">Select Car Model</option>';
+                    data.models.forEach(model => {
+                        const option = document.createElement('option');
+                        option.value = model;
+                        option.textContent = model;
+                        this.carModelSelect.appendChild(option);
+                    });
+
+                    this.carModelSelect.disabled = false;
+
+                } catch (error) {
+                    console.error('Error loading car models:', error);
+                    this.carModelSelect.innerHTML = '<option value="">Error loading models</option>';
+                    this.showError('Failed to load car models. Please try again.');
+                }
+            }
+
+            validateField(field) {
+                const value = field.value.trim();
+                const fieldName = field.name;
+                let error = '';
+
+                switch (fieldName) {
+                    case 'company':
+                        if (!value || value === 'Select Company') {
+                            error = 'Please select a company';
+                        }
+                        break;
+                    case 'car_model':
+                        if (!value) {
+                            error = 'Please select a car model';
+                        }
+                        break;
+                    case 'year':
+                        if (!value) {
+                            error = 'Please select a year';
+                        }
+                        break;
+                    case 'fuel_type':
+                        if (!value) {
+                            error = 'Please select a fuel type';
+                        }
+                        break;
+                    case 'kilometers':
+                        if (!value) {
+                            error = 'Please enter kilometers driven';
+                        } else {
+                            const km = parseFloat(value);
+                            if (isNaN(km) || km < 0) {
+                                error = 'Kilometers must be a positive number';
+                            } else if (km > 1000000) {
+                                error = 'Kilometers value seems unrealistic';
+                            }
+                        }
+                        break;
+                }
+
+                this.showFieldError(fieldName, error);
+                return !error;
+            }
+
+            validateForm() {
+                const fields = this.form.querySelectorAll('input[required], select[required]');
+                let isValid = true;
+
+                fields.forEach(field => {
+                    if (!this.validateField(field)) {
+                        isValid = false;
+                    }
+                });
+
+                return isValid;
+            }
+
+            showFieldError(fieldName, error) {
+                const errorElement = document.getElementById(`${fieldName}Error`);
+                if (errorElement) {
+                    errorElement.textContent = error;
+                    errorElement.style.display = error ? 'block' : 'none';
+                }
+            }
+
+            clearFieldError(field) {
+                this.showFieldError(field.name, '');
+            }
+
+            showError(message) {
+                this.errorMessage.textContent = message;
+                this.errorMessage.style.display = 'block';
+                setTimeout(() => {
+                    this.errorMessage.style.display = 'none';
+                }, 5000);
+            }
+
+            showLoading(show) {
+                if (show) {
+                    this.loadingSpinner.style.display = 'block';
+                    this.predictBtn.disabled = true;
+                    this.predictBtn.classList.add('loading');
+                } else {
+                    this.loadingSpinner.style.display = 'none';
+                    this.predictBtn.disabled = false;
+                    this.predictBtn.classList.remove('loading');
+                }
+            }
+
+            showResult(prediction) {
+                const predictionText = document.getElementById('predictionText');
+                predictionText.innerHTML = `Predicted Price: <strong>${prediction.formatted}</strong>`;
+                this.predictionResult.style.display = 'block';
+                this.predictionResult.classList.add('show');
+            }
+
+            async handleFormSubmission() {
+                // Clear previous results
+                this.predictionResult.style.display = 'none';
+                this.errorMessage.style.display = 'none';
+
+                // Validate form
+                if (!this.validateForm()) {
+                    this.showError('Please fix the errors before submitting');
+                    return;
+                }
+
+                this.showLoading(true);
+
+                try {
+                    const formData = new FormData(this.form);
+                    
+                    const response = await fetch('/predict', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(data.error || 'Prediction failed');
+                    }
+
+                    this.showResult(data);
+
+                } catch (error) {
+                    console.error('Prediction error:', error);
+                    this.showError(error.message || 'Prediction failed. Please try again.');
+                } finally {
+                    this.showLoading(false);
+                }
+            }
+        }
+
+        // Initialize the application when DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            new CarPricePredictor();
+        });
+    </script>
+</body>
+</html>
