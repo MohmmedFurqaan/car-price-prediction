@@ -8,6 +8,8 @@ this model is Built using Python and popular libraries like scikit-learn, pandas
 
 This project aims to predict the Price of an used Car by taking it's Company name, it's Model name, Year of Purchase, and other parameters.
 
+# Clone these repository 
+
 
 ## How to use?
 
@@ -15,12 +17,16 @@ This project aims to predict the Price of an used Car by taking it's Company nam
 2. Install the required packages
 
 Some packages are:
- - numpy 
- - pandas 
- - scikit-learn
- - flask
-
+ - numpy : pip install numpy 
+ - pandas : pip install pandas
+ - scikit-learn : 1. make the vertual envirnoment **python -m venv sklearn-env**
+                  2. activate the script : **sklearn-env\Scripts\activate**
+                  3. install scikit-learn : **pip install -U scikit-learn**
+ - flask : pip install flask
+ - flask_cors: pip install flask-cors
+   
 3. Run the "application.py" file
+   
 And you are good to go. 
 
 # Description
