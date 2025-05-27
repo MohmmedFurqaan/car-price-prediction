@@ -10,6 +10,8 @@ This project aims to predict the Price of an used Car by taking it's Company nam
 
 # Clone these repository 
 
+https://github.com/MohmmedFurqaan/car-price-prediction.git
+
 
 ## How to use?
 
